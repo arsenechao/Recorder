@@ -1,0 +1,11 @@
+.venv/
+.venv-cv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+output/*
+!output/.gitkeep
+# 私人測試照片不預設加入版本紀錄。
+samples/*
+!samples/README.md
+.DS_Store

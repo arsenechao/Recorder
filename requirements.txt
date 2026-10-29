@@ -1,0 +1,4 @@
+# 沿用課程的 Python 3.11 教學組合，不表示這是最新版。
+# 只選桌面版 opencv-python；不要同時安裝 headless 或 contrib 版本。
+numpy==1.26.4
+opencv-python==4.8.1.78
