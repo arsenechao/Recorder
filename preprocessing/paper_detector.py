@@ -4,8 +4,8 @@
 # 來源與假設見 README.md。
 
 # 本檔目前只有註解。需要自行輸入的匯入：
-# import cv2
-# import numpy as np
+import cv2
+import numpy as np
 
 # 函式簽章（請自行輸入）：
 # def create_paper_mask(image):
@@ -26,6 +26,13 @@
 
 # 【實作區】請依上方規格自行寫出函式，不要把 TODO 當成已完成。
 
+def create_paper_mask(image):
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    return gray, binary
 
 # ====================================================================
 
@@ -45,6 +52,10 @@
 
 # 【實作區】請依上方規格自行寫出函式，不要把 TODO 當成已完成。
 
+def find_outer_contours(binary):
+    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    return contours
 
 # ====================================================================
 
@@ -68,7 +79,23 @@
 
 # 【實作區】請依上方規格自行寫出函式，不要把 TODO 當成已完成。
 
+def approximate_paper_polygon(contour):
 
+    Perimeter = cv2.arcLength(contour, True)
+    if Perimeter <= 0:
+        return None
+
+    epslon = 0.02 * Perimeter
+    approx = cv2.approxPolyDP(contour, epslon, True)
+
+    if len(approx) != 4:
+        return None
+    if not cv2.isContourConvex(approx):
+        return None
+    if cv2.contourArea(approx) <= 1:
+        return None
+
+    return approx.reshape(4,2).astype(np.float32)
 # ====================================================================
 
 # 函式簽章（請自行輸入）：
@@ -98,3 +125,48 @@
 
 # 【實作區】請依上方規格自行寫出函式，不要把 TODO 當成已完成。
 
+def detect_paper(image):
+
+    gray, binary = create_paper_mask(image)
+    contours = find_outer_contours(binary)
+
+    contours_view = image.copy()
+    cv2.drawContours(contours_view, contours, -1, (0,0,255),2)
+
+    height , width = image.shape[:2]
+    min_area = height * width * 0.15
+    best_corners = None
+    best_area = 0.0
+
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area < min_area:
+            continue
+
+        x, y, w, h = cv2.boundingRect(contour)
+        if x <= 0 or y <= 0 or x + w >= width or y + h >= height:
+            continue
+
+        corners = approximate_paper_polygon(contour)
+        if corners is None:
+            continue
+
+        if area > best_area:
+            best_area = area
+            best_corners = corners
+
+    selected_view = image.copy()
+    if best_corners is not None:
+        draw_points = np.rint(best_corners).astype(np.int32).reshape(4,1,2)
+        cv2.drawContours(selected_view, [draw_points], -1, (0,255,0), 3)
+        for x,y in best_corners:
+            cv2.circle(selected_view, (int(x),int(y)), 6, (0,0,255),-1)
+
+    debug = {
+        "01_gray": gray,
+        "02_binary": binary,
+        "03_contours": contours_view,
+        "04_paper_corners":selected_view
+    }
+
+    return best_corners, debug
